@@ -37,6 +37,7 @@ After login, the system allows the user to perform operations such as deposit, w
 Each transaction is recorded and stored in the database for future reference.
 The system retrieves and updates account information in real time, ensuring accuracy and security.
 
+7 day project plan:
 
 Day 1: Analyze project requirements and design the system architecture and database structure.
 
