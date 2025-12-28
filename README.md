@@ -23,9 +23,13 @@ To reduce manual effort and improve operational efficiency.
 4. Technologies Used
 
 Programming Language: Python
+
 Database: SQLite / MySQL
+
 Frontend: Console-based interface (can be extended to GUI/Web)
+
 Tools: Python IDLE / VS Code
+
 Platform: Windows / Linux
 
 
