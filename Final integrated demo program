@@ -1,0 +1,102 @@
+import sqlite3, hashlib
+from datetime import datetime
+
+conn = sqlite3.connect("bank.db")
+cur = conn.cursor()
+
+# Tables
+cur.execute("""CREATE TABLE IF NOT EXISTS customers(
+id INTEGER PRIMARY KEY, username TEXT UNIQUE, password TEXT)""")
+cur.execute("""CREATE TABLE IF NOT EXISTS accounts(
+acc_no INTEGER PRIMARY KEY, cust_id INTEGER, balance REAL DEFAULT 0)""")
+cur.execute("""CREATE TABLE IF NOT EXISTS transactions(
+tid INTEGER PRIMARY KEY, acc_no INTEGER, type TEXT, amount REAL, date TEXT)""")
+conn.commit()
+
+def hash_pw(p): return hashlib.sha256(p.encode()).hexdigest()
+
+def register():
+    try:
+        u = input("Username: ")
+        p = hash_pw(input("Password: "))
+        cur.execute("INSERT INTO customers VALUES(NULL,?,?)",(u,p))
+        cid = cur.lastrowid
+        cur.execute("INSERT INTO accounts VALUES(NULL,?,0)",(cid,))
+        conn.commit()
+        print("Registration successful")
+    except:
+        print("Username already exists")
+
+def login():
+    u = input("Username: ")
+    p = hash_pw(input("Password: "))
+    cur.execute("SELECT id FROM customers WHERE username=? AND password=?",(u,p))
+    r = cur.fetchone()
+    return r[0] if r else None
+
+def menu(acc):
+    while True:
+        print("\n1.Deposit 2.Withdraw 3.Balance 4.Transfer 5.History 6.Logout")
+        ch = input("Choose: ")
+
+        if ch=="1":
+            amt=float(input("Amount: "))
+            if amt>0:
+                cur.execute("UPDATE accounts SET balance=balance+? WHERE acc_no=?",(amt,acc))
+                cur.execute("INSERT INTO transactions VALUES(NULL,?,?,?,?)",
+                            (acc,"Deposit",amt,datetime.now()))
+                conn.commit()
+
+        elif ch=="2":
+            amt=float(input("Amount: "))
+            cur.execute("SELECT balance FROM accounts WHERE acc_no=?",(acc,))
+            bal=cur.fetchone()[0]
+            if amt>0 and amt<=bal:
+                cur.execute("UPDATE accounts SET balance=balance-? WHERE acc_no=?",(amt,acc))
+                cur.execute("INSERT INTO transactions VALUES(NULL,?,?,?,?)",
+                            (acc,"Withdraw",amt,datetime.now()))
+                conn.commit()
+            else:
+                print("Invalid withdrawal")
+
+        elif ch=="3":
+            cur.execute("SELECT balance FROM accounts WHERE acc_no=?",(acc,))
+            print("Balance:",cur.fetchone()[0])
+
+        elif ch=="4":
+            to=int(input("To Account: "))
+            amt=float(input("Amount: "))
+            cur.execute("SELECT balance FROM accounts WHERE acc_no=?",(acc,))
+            bal=cur.fetchone()[0]
+            if amt<=bal:
+                cur.execute("UPDATE accounts SET balance=balance-? WHERE acc_no=?",(amt,acc))
+                cur.execute("UPDATE accounts SET balance=balance+? WHERE acc_no=?",(amt,to))
+                cur.execute("INSERT INTO transactions VALUES(NULL,?,?,?,?)",
+                            (acc,"Transfer Out",amt,datetime.now()))
+                cur.execute("INSERT INTO transactions VALUES(NULL,?,?,?,?)",
+                            (to,"Transfer In",amt,datetime.now()))
+                conn.commit()
+            else:
+                print("Insufficient balance")
+
+        elif ch=="5":
+            cur.execute("SELECT type,amount,date FROM transactions WHERE acc_no=?",(acc,))
+            for t in cur.fetchall(): print(t)
+
+        elif ch=="6":
+            break
+
+while True:
+    print("\n1.Register 2.Login 3.Exit")
+    c=input("Choose: ")
+    if c=="1": register()
+    elif c=="2":
+        cid=login()
+        if cid:
+            cur.execute("SELECT acc_no FROM accounts WHERE cust_id=?",(cid,))
+            menu(cur.fetchone()[0])
+        else:
+            print("Invalid login")
+    elif c=="3": break
+
+conn.close()
